@@ -53,7 +53,7 @@ void setup() {
   M5.IMU.getAccelData(&previos_acceleration_x, &previos_acceleration_y,
                       &previos_acceleration_z);
 
-  BLEDevice::init("ESP32");
+  BLEDevice::init("Gestured Meeting");
 
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
