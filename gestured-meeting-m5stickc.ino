@@ -45,7 +45,7 @@ void setup() {
 
   M5.begin();
   M5.IMU.Init();
-  M5.Lcd.setRotation(1);
+  M5.Lcd.setRotation(0);
 
   delay(1000);
 
