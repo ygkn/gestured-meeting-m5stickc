@@ -15,10 +15,7 @@ bool oldDeviceConnected = false;
 uint32_t value = 0;
 
 class MyServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer* pServer) {
-    Serial.println("connected");
-    deviceConnected = true;
-  };
+  void onConnect(BLEServer* pServer) { deviceConnected = true; };
 
   void onDisconnect(BLEServer* pServer) { deviceConnected = false; }
 };
@@ -40,8 +37,6 @@ void setup() {
   Serial.begin(9600);
   while (!Serial) {
   }
-
-  Serial.println("hello");
 
   M5.begin();
   M5.IMU.Init();
@@ -72,42 +67,80 @@ void setup() {
   pAdvertising->setScanResponse(false);
   pAdvertising->setMinPreferred(0x0);
   BLEDevice::startAdvertising();
-  Serial.println("Waiting a client connection to notify...");
+
+  Serial.println("acc_x acc_y acc_z power connection risen waved");
 }
 
 void loop() {
   M5.update();
 
+  // battery
+  double vbat = M5.Axp.GetVbatData() * 1.1 / 1000;
+  M5.Lcd.setCursor(0, 5);
+  M5.Lcd.printf("Volt: %.2fV", vbat);
+
+  int8_t bat_charge_p = int8_t((vbat - 3.0) / 1.2 * 100);
+  if (bat_charge_p > 100) {
+    bat_charge_p = 100;
+  } else if (bat_charge_p < 0) {
+    bat_charge_p = 0;
+  }
+
+  // get sensor values
   M5.IMU.getAccelData(&current_acceleration_x, &current_acceleration_y,
                       &current_acceleration_z);
 
-  bool current_is_hand_risen = is_hand_risen();
+  bool current_is_hand_risen =
+      -0.8 < current_acceleration_x && current_acceleration_x < 0.8 &&
+      current_acceleration_y > 0.8 && -0.8 < current_acceleration_z &&
+      current_acceleration_z < 0.8;
 
-  if (current_is_hand_risen != has_been_hand_risen && deviceConnected) {
-    pCharacteristic->setValue("toggle_hand");
-    pCharacteristic->notify();
-  }
+  float wave_power =
+      sqrt(pow(current_acceleration_x - previos_acceleration_x, 2) +
+           pow(current_acceleration_y - previos_acceleration_y, 2) +
+           pow(current_acceleration_z - previos_acceleration_z, 2));
 
-  has_been_hand_risen = current_is_hand_risen;
+  bool current_is_hand_waved = wave_power > 0.8;
 
-  bool current_is_hand_waved = is_hand_waved();
-
-  if (current_is_hand_waved && deviceConnected) {
-    if (!has_been_hand_waved) {
-      wave_start_time = millis();
-
-      pCharacteristic->setValue("leave_start");
+  // notify
+  if (deviceConnected) {
+    if (current_is_hand_risen != has_been_hand_risen) {
+      pCharacteristic->setValue("toggle_hand");
       pCharacteristic->notify();
-    } else if (millis() - wave_start_time > 3000) {
-      pCharacteristic->setValue("leave_comfirm");
-      pCharacteristic->notify();
+    }
+
+    if (current_is_hand_waved) {
+      if (!has_been_hand_waved) {
+        wave_start_time = millis();
+
+        pCharacteristic->setValue("leave_start");
+        pCharacteristic->notify();
+      } else if (millis() - wave_start_time > 3000) {
+        pCharacteristic->setValue("leave_comfirm");
+        pCharacteristic->notify();
+      }
     }
   }
 
+  // display to M5StickC
+  if (current_is_hand_risen) {
+    M5.Lcd.fillScreen(YELLOW);
+  } else if (current_is_hand_waved) {
+    M5.Lcd.fillScreen(RED);
+  } else {
+    M5.Lcd.fillScreen(BLACK);
+  }
+
+  // serial
+  Serial.printf("%f %f %f %d %d %d %d\n", current_acceleration_x,
+                current_acceleration_y, current_acceleration_z, bat_charge_p,
+                deviceConnected ? 1 : 0, current_is_hand_risen ? 1 : 1,
+                current_is_hand_waved ? 1 : 0);
+
+  // process connection
   if (!deviceConnected && oldDeviceConnected) {
     delay(500);
     pServer->startAdvertising();
-    Serial.println("start advertising");
     oldDeviceConnected = deviceConnected;
   }
 
@@ -115,43 +148,12 @@ void loop() {
     oldDeviceConnected = deviceConnected;
   }
 
+  has_been_hand_risen = current_is_hand_risen;
   has_been_hand_waved = current_is_hand_waved;
-
-  Serial.printf("x: %.5f y: %.5f z: %.5f ", current_acceleration_x,
-                current_acceleration_y, current_acceleration_z);
-
-  Serial.printf("power: %.5f",
-                sqrt(pow(current_acceleration_x - previos_acceleration_x, 2) +
-                     pow(current_acceleration_y - previos_acceleration_y, 2) +
-                     pow(current_acceleration_z - previos_acceleration_z, 2)));
-
-  if (current_is_hand_risen) {
-    M5.Lcd.fillScreen(YELLOW);
-    Serial.print(" RISEN");
-  } else if (current_is_hand_waved) {
-    M5.Lcd.fillScreen(RED);
-    Serial.print(" WAVED");
-  } else {
-    M5.Lcd.fillScreen(BLACK);
-  }
-
-  Serial.println();
 
   previos_acceleration_x = current_acceleration_x;
   previos_acceleration_y = current_acceleration_y;
   previos_acceleration_z = current_acceleration_z;
 
   delay(1000);
-}
-
-bool is_hand_risen() {
-  return -0.8 < current_acceleration_x && current_acceleration_x < 0.8 &&
-         current_acceleration_y > 0.8 && -0.8 < current_acceleration_z &&
-         current_acceleration_z < 0.8;
-}
-
-bool is_hand_waved() {
-  return sqrt(pow(current_acceleration_x - previos_acceleration_x, 2) +
-              pow(current_acceleration_y - previos_acceleration_y, 2) +
-              pow(current_acceleration_z - previos_acceleration_z, 2)) > 0.8;
 }
