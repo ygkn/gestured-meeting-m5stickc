@@ -134,7 +134,7 @@ void loop() {
   // serial
   Serial.printf("%f %f %f %d %d %d %d\n", current_acceleration_x,
                 current_acceleration_y, current_acceleration_z, bat_charge_p,
-                deviceConnected ? 1 : 0, current_is_hand_risen ? 1 : 1,
+                deviceConnected ? 1 : 0, current_is_hand_risen ? 1 : 0,
                 current_is_hand_waved ? 1 : 0);
 
   // process connection
