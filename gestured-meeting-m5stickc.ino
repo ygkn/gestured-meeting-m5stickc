@@ -1,5 +1,4 @@
 
-#include <Arduino.h>
 #include <BLE2902.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
@@ -92,8 +91,8 @@ void loop() {
 
   bool current_is_hand_risen =
       -0.8 < current_acceleration_x && current_acceleration_x < 0.8 &&
-      current_acceleration_y > 0.8 && -0.8 < current_acceleration_z &&
-      current_acceleration_z < 0.8;
+      -0.8 < current_acceleration_z && current_acceleration_z < 0.8 &&
+      current_acceleration_y < -0.8;
 
   float wave_power =
       sqrt(pow(current_acceleration_x - previos_acceleration_x, 2) +
