@@ -4,8 +4,7 @@
 
 ## Requirements
 
-- Arduino IDE ready for burn program to M5StickC
-- Make sure _ESP32 BLE Arduino_ library is installed
+[Arduino IDE](https://www.arduino.cc/en/software) and [M5StickC Library](https://github.com/m5stack/M5StickC) are installed.
 
 ## Usage
 
